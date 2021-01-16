@@ -1,22 +1,23 @@
 //TODO: Add radio powerdown/up
-
 #include <SPI.h>
 #include "nRF24L01.h"
 #include "RF24.h"
 #include<Wire.h>
 #include "definitions.h"
 
-
 RF24 radio(CE,CSN); // Default SPI speed is 4Mbit, but should work up to 10MBbit
 
-#define WHICH_NODE 4     // must be a number from 0 - 5 identifying the PTX node 
+#define WHICH_NODE 0     // must be a number from 0 - 5 identifying the PTX node 
 
 const uint64_t pipes[] =  {0x7878787878LL, 0xB3B4B5B6F1LL, 0xB3B4B5B6CDLL, 0xB3B4B5B6A3LL, 0xB3B4B5B60FLL, 0xB3B4B5B605LL};
 const uint64_t PTXpipe = pipes[ WHICH_NODE ];   // Pulls the address from the above array for this node's pipe
+//const byte PTXpipe[6] = "00001";
 
 uint8_t dataToWrite[] = {1,1,1,1,1,1};
 uint8_t receiveData[PACKET_SIZE];
-bool SERIAL_DEBUG  = false;
+bool SERIAL_DEBUG  = true;
+
+const char text[] = "halo FZ!";
 
 byte counter = 0;
 byte failureToWriteCounter =0;
@@ -24,14 +25,16 @@ byte failureToWriteCounter =0;
 int testCount=0;
 bool ledState = 0;
 
+int time_out = 50; // time out time in ms.
+
 int16_t AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ; 
 
 bool timer4Interrupt = false;
 int xPos = 0;
 int yPos = 0; 
 
-uint8_t encoder1Counter = 0 ;
-uint8_t encoder2Counter = 0 ;
+uint8_t encoder1Counter = 0;
+uint8_t encoder2Counter = 0;
 
 void setup(void)
 {
@@ -50,28 +53,33 @@ void setup(void)
 
   turnOnEncoders();
 
-  if(SERIAL_DEBUG) SerialUSB.begin(0);
+  if(SERIAL_DEBUG) Serial.begin(9600);
 
-  radio.begin();
+//  radio.begin();
+//  radio.setRetries(10,0); //retries, delay
+//  radio.setPayloadSize(PACKET_SIZE);
+//  radio.setDataRate(RF24_2MBPS);
+////  radio.setChannel(60);
+//
+//  radio.openReadingPipe(0,PTXpipe);  //open reading or receive pipe
+//  radio.stopListening();
 
-  radio.setRetries(10,0); //retries, delay
-  radio.setPayloadSize(PACKET_SIZE);
+  radio.begin();                  // Starting the Wireless communication
+  radio.openWritingPipe(PTXpipe); // Setting the address where we will send the data
   radio.setDataRate(RF24_2MBPS);
-  radio.setChannel(60);
+  radio.setPALevel(RF24_PA_MIN);  // You can set it as minimum or maximum depending on the distance between the transmitter and receiver.
+  radio.stopListening();          // This sets the module as transmitter
 
-  radio.openReadingPipe(0,PTXpipe);  //open reading or receive pipe
-  radio.stopListening();
-
-  //Flash LEDs to undicate startup
-  for(int i=0; i<5; i++) {
-    digitalWrite(LED_RED, HIGH); 
-    digitalWrite(LED_BLUE, LOW); 
-    delay(100);
-    digitalWrite(LED_RED, LOW); 
-    digitalWrite(LED_BLUE, HIGH); 
-    delay(100);
-  }
-    digitalWrite(LED_BLUE, LOW); 
+//  Flash LEDs to undicate startup
+//  for(int i=0; i<5; i++) {
+//    digitalWrite(LED_RED, HIGH); 
+//    digitalWrite(LED_BLUE, LOW); 
+//    delay(100);
+//    digitalWrite(LED_RED, LOW); 
+//    digitalWrite(LED_BLUE, HIGH); 
+//    delay(100);
+//  }
+//  digitalWrite(LED_BLUE, LOW); 
 
   //Start the interrupt routines
   attachInterrupt(ENC1_INT, ENC1_INT_Routine, FALLING); 
@@ -82,21 +90,20 @@ void setup(void)
 //----------------MAIN LOOP-----------------
 void loop(void)
 {
-  
-  if(timer4Interrupt==true) { 
+  if(timer4Interrupt==true) {
     dataToWrite[1] = counter;
-    dataToWrite[2] =failureToWriteCounter;
+    dataToWrite[2] = failureToWriteCounter;
     dataToWrite[3] = encoder1Counter;  
     dataToWrite[4] = encoder2Counter;
     sendAndReceiveResponse();
     timer4Interrupt=false;
-
-  } 
+  }
+//  delay(1000);
 }
 
 //------------HANDLE TIMER 4 INTERRUPT---------------
 void TC4_Handler()   
-{     
+{
   // Check for overflow (OVF) interrupt
   if (TC4->COUNT16.INTFLAG.bit.OVF && TC4->COUNT16.INTENSET.bit.OVF)             
   {
@@ -110,55 +117,74 @@ void TC4_Handler()
 void ENC1_INT_Routine() { 
  encoder1Counter++; 
 }
+
 void ENC2_INT_Routine() { 
   encoder2Counter++;
 }
 
-void sendAndReceiveResponse() { 
+//void sendAndReceiveResponse() {
+//  Serial.print(dataToWrite[0]); Serial.print("  ");
+//  Serial.print(dataToWrite[1]); Serial.print("  ");
+//  Serial.print(dataToWrite[2]); Serial.print("  ");
+//  Serial.print(dataToWrite[3]); Serial.print("  ");
+//  Serial.println(dataToWrite[4]);
+//  radio.powerUp();
+//  radio.stopListening();
+//  radio.openWritingPipe(PTXpipe);
+////  radio.write(&dataToWrite, sizeof(dataToWrite)); // Sending the message to receiver
+//  if (!radio.write( &dataToWrite, sizeof(dataToWrite))){  //if the write fails let the user know over serial monitor
+//     if(SERIAL_DEBUG) Serial.println("radio.write failed");   
+//     failureToWriteCounter++;
+//  }
+//  else {
+//    if(SERIAL_DEBUG) Serial.println("radio.write SUCCESS");
+//  }
+//}
+
+void sendAndReceiveResponse() {
   radio.powerUp();
-  //Send radio data  
+  //Send radio data
   radio.stopListening();
   radio.openWritingPipe(PTXpipe);        //open writing or transmit pipe
   if (!radio.write( &dataToWrite, PACKET_SIZE )){  //if the write fails let the user know over serial monitor
-     if(SERIAL_DEBUG)SerialUSB.println("Failed");   
-     failureToWriteCounter++;   
-  } 
- else {
-    if(SERIAL_DEBUG)SerialUSB.println("SUCCESS");
+     if(SERIAL_DEBUG) Serial.println("radio.write failed");   
+     failureToWriteCounter++;
+  }
+  else {
+    if(SERIAL_DEBUG) Serial.println("radio.write SUCCESS");
   }
 
   //wait for a reply
-  radio.startListening();  
+  radio.openReadingPipe(0, PTXpipe);
+  radio.startListening();
   unsigned long started_waiting_at = millis();
   bool timeout = false;
-    while ( ! radio.available() && ! timeout )
-      if (millis() - started_waiting_at > 50 )
-        timeout = true;
-    if ( timeout )
-    {
-      if(SERIAL_DEBUG)SerialUSB.println("Failed, response timed out.\n\r");
-      //timeOutCount++;
-    }
-    else
-    {
-      radio.read( &receiveData, PACKET_SIZE );
-         toogleLedWhenData();
-        switch(receiveData[0]) { 
-          case 0x00: 
-          break; 
-          case IGNORE: 
-          break; 
-          case MOTOR_CRL: 
-             analogWrite(M1_PWM, receiveData[1]);
-             analogWrite(M2_PWM, receiveData[2]);
-             digitalWrite(M1_DIR, receiveData[3]); 
-             digitalWrite(M2_DIR, receiveData[4]);
-          break;
-          case 0x03:       
-          break;
-        }
-    }
-    radio.powerDown();
+  while ( ! radio.available() && ! timeout )
+    if (millis() - started_waiting_at > time_out )
+      timeout = true;
+  if ( timeout ) {
+    if(SERIAL_DEBUG) Serial.println("Failed, response timed out.\n\r");
+    //timeOutCount++;
+  }
+  else {
+    radio.read( &receiveData, PACKET_SIZE );
+       toogleLedWhenData();
+      switch(receiveData[0]) { 
+        case 0x00: 
+        break;
+        case IGNORE: 
+        break;
+        case MOTOR_CRL:
+           analogWrite(M1_PWM, receiveData[1]);
+           analogWrite(M2_PWM, receiveData[2]);
+           digitalWrite(M1_DIR, receiveData[3]); 
+           digitalWrite(M2_DIR, receiveData[4]);
+        break;
+        case 0x03:       
+        break;
+      }
+  }
+  radio.powerDown();
 }
 
 void toogleLedWhenData() {
@@ -192,23 +218,23 @@ void getDataFromMPU6050() {
 }
 
 void serialDebugMPU6050() { 
- SerialUSB.print("$");
-  SerialUSB.print(",");
-  SerialUSB.print(AcX);
-  SerialUSB.print(","); 
-  SerialUSB.print(AcY);
-  SerialUSB.print(",");
-  SerialUSB.print(AcZ);
-  SerialUSB.print(","); 
-  SerialUSB.print(GyX);
-  SerialUSB.print(","); 
-  SerialUSB.print(GyY);
-  SerialUSB.print(","); 
-  SerialUSB.print(GyZ);
-  SerialUSB.print(","); 
-  SerialUSB.print(millis());
-  SerialUSB.print(",");
-  SerialUSB.println(Tmp/340.00+36.53);  //equation for temperature in degrees C from datasheet 
+  Serial.print("$");
+  Serial.print(",");
+  Serial.print(AcX);
+  Serial.print(","); 
+  Serial.print(AcY);
+  Serial.print(",");
+  Serial.print(AcZ);
+  Serial.print(","); 
+  Serial.print(GyX);
+  Serial.print(","); 
+  Serial.print(GyY);
+  Serial.print(","); 
+  Serial.print(GyZ);
+  Serial.print(","); 
+  Serial.print(millis());
+  Serial.print(",");
+  Serial.println(Tmp/340.00+36.53);  //equation for temperature in degrees C from datasheet 
 }
 
 void startI2C_400KHz() { 
@@ -241,7 +267,7 @@ void startTransmitTimer4(int freq) {
   //REG_TC4_COUNT16_CC0 = 0xB71A;                   // Set the TC4 CC0 register as the TOP value in match frequency mode
   //Freq(HZ) = 48000000/(PRESCALE*(CCO_REG+1))
   //9374  - 20 Hz
-  
+
   while (TC4->COUNT16.STATUS.bit.SYNCBUSY);       // Wait for synchronization
 
   //NVIC_DisableIRQ(TC4_IRQn);
@@ -252,12 +278,12 @@ void startTransmitTimer4(int freq) {
   REG_TC4_INTFLAG |= TC_INTFLAG_OVF;              // Clear the interrupt flags
   REG_TC4_INTENSET = TC_INTENSET_OVF;             // Enable TC4 interrupts
   // REG_TC4_INTENCLR = TC_INTENCLR_OVF;          // Disable TC4 interrupts
- 
+
   REG_TC4_CTRLA |= TC_CTRLA_PRESCALER_DIV256 |   // Set prescaler to 1024, 48MHz/1024 = 46.875kHz
                    TC_CTRLA_WAVEGEN_MFRQ |        // Put the timer TC4 into match frequency (MFRQ) mode 
                    TC_CTRLA_ENABLE;               // Enable TC4
   while (TC4->COUNT16.STATUS.bit.SYNCBUSY);       // Wait for synchronization
-} 
+}
 
 void turnOffEncoders() {
   //analogWrite(ENC1_LED, 0);
@@ -274,9 +300,5 @@ void turnOnEncoders() {
 }
 
 void turnOffMotors(){
-  
+
 }
-
-
-
-
