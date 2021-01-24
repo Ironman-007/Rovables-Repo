@@ -2,12 +2,12 @@
 #include <SPI.h>
 #include "nRF24L01.h"
 #include "RF24.h"
-#include<Wire.h>
+#include <Wire.h>
 #include "definitions.h"
 
-RF24 radio(CE,CSN); // Default SPI speed is 4Mbit, but should work up to 10MBbit
+RF24 radio(CE,CSN);    // Default SPI speed is 4Mbit, but should work up to 10MBbit
 
-#define WHICH_NODE 0     // must be a number from 0 - 5 identifying the PTX node 
+#define WHICH_NODE 0   // must be a number from 0 - 5 identifying the PTX node 
 
 const uint64_t pipes[] =  {0x7878787878LL, 0xB3B4B5B6F1LL, 0xB3B4B5B6CDLL, 0xB3B4B5B6A3LL, 0xB3B4B5B60FLL, 0xB3B4B5B605LL};
 const uint64_t PTXpipe = pipes[ WHICH_NODE ];   // Pulls the address from the above array for this node's pipe
@@ -95,6 +95,9 @@ void loop(void)
     dataToWrite[2] = failureToWriteCounter;
     dataToWrite[3] = encoder1Counter;  
     dataToWrite[4] = encoder2Counter;
+    SerialUSB.print(encoder1Counter);
+    SerialUSB.print(", ");
+    SerialUSB.println(encoder2Counter);
     sendAndReceiveResponse();
     timer4Interrupt=false;
   }
@@ -147,11 +150,11 @@ void sendAndReceiveResponse() {
   radio.stopListening();
   radio.openWritingPipe(PTXpipe);        //open writing or transmit pipe
   if (!radio.write( &dataToWrite, PACKET_SIZE )){  //if the write fails let the user know over serial monitor
-     if(SERIAL_DEBUG) Serial.println("radio.write failed");   
+//     if(SERIAL_DEBUG) Serial.println("radio.write failed");   
      failureToWriteCounter++;
   }
   else {
-    if(SERIAL_DEBUG) Serial.println("radio.write SUCCESS");
+//    if(SERIAL_DEBUG) Serial.println("radio.write SUCCESS");
   }
 
   //wait for a reply
@@ -163,7 +166,7 @@ void sendAndReceiveResponse() {
     if (millis() - started_waiting_at > time_out )
       timeout = true;
   if ( timeout ) {
-    if(SERIAL_DEBUG) Serial.println("Failed, response timed out.\n\r");
+//    if(SERIAL_DEBUG) SerialUSB.println("Failed, response timed out.\n\r");
     //timeOutCount++;
   }
   else {
