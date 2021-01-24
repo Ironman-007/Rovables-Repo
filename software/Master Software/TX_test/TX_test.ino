@@ -5,11 +5,11 @@
 // Define pins
 #define  LED_BLUE     0
 #define  LED_RED      1
-#define  CE           10 // 3 Arduino pro mini
-#define  CSN          9  // 8 Arduino pro mini
+#define  CE           3 // 3 Arduino pro mini
+#define  CSN          8 // 8 Arduino pro mini
 #define BUTTON_X      A0
 #define BUTTON_Y      A1
-#define  DEBUG_PIN    0
+//#define  DEBUG_PIN    0
 #define MOTOR_OPCODE  0x02
 #define POTENTIOMETER A4
 
@@ -27,6 +27,8 @@ RF24 radio(CE,CSN); // Default SPI speed is 4Mbit, but should work up to 10MBbit
 const uint64_t pipes[] = {0x7878787878LL, 0xB3B4B5B6F1LL, 0xB3B4B5B6CDLL, 0xB3B4B5B6A3LL, 0xB3B4B5B60FLL, 0xB3B4B5B605LL};
 
 bool SERIAL_DEBUG  = true;
+bool arduino_pro_mini = true;
+
 uint8_t receiveData[PACKET_SIZE] = {};
 uint8_t sendData[PACKET_SIZE] = {};
 
@@ -42,7 +44,8 @@ void setup(void)
 {
   pinMode(LED_BLUE, OUTPUT);
 
-  SerialUSB.begin(0);
+  if (arduino_pro_mini) Serial.begin(9600);
+//  else SerialUSB.begin(0);
 
   radio.begin();
 
@@ -87,7 +90,7 @@ void loop(void)
      else {
         //failed sending
      }
-     digitalWrite(DEBUG_PIN,LOW);
+//     digitalWrite(DEBUG_PIN,LOW);
   } // end while
 }   // end loop
 
