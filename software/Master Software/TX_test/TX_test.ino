@@ -161,8 +161,7 @@ void printReceiveDataFormated(byte whichPipe) {
 }
 
 void getJoyStickData() {
-  if (Serial.available() > 0)
-  {
+  if (Serial.available() > 0) {
     command = Serial.read();
     if (command == ' ') {
       sendData[0] = MOTOR_OPCODE;
