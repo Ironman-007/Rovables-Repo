@@ -6,14 +6,10 @@
 #define  LED_BLUE     0
 #define  LED_RED      1
 #define  CE           3 // 3 Arduino pro mini
-<<<<<<< HEAD
 #define  CSN          8  // 8 Arduino pro mini
-=======
-#define  CSN          8 // 8 Arduino pro mini
->>>>>>> e4a4ad32bdc410d8eed71ae94ec467864f8df904
 #define BUTTON_X      A0
 #define BUTTON_Y      A1
-//#define  DEBUG_PIN    0
+#define  DEBUG_PIN    0
 #define MOTOR_OPCODE  0x02
 #define POTENTIOMETER A4
 
@@ -31,8 +27,6 @@ RF24 radio(CE,CSN); // Default SPI speed is 4Mbit, but should work up to 10MBbit
 const uint64_t pipes[] = {0x7878787878LL, 0xB3B4B5B6F1LL, 0xB3B4B5B6CDLL, 0xB3B4B5B6A3LL, 0xB3B4B5B60FLL, 0xB3B4B5B605LL};
 
 bool SERIAL_DEBUG  = true;
-bool arduino_pro_mini = true;
-
 uint8_t receiveData[PACKET_SIZE] = {};
 uint8_t sendData[PACKET_SIZE] = {};
 
@@ -44,16 +38,13 @@ uint8_t robotUnderControl = 0;
 uint8_t serialBuffer[BUFFER_SIZE] = { }; //Initialize to zeros
 uint8_t computerReceiveBuffer[PACKET_SIZE][NUMBER_OF_NODES] = { };
 
+char command = ' ';
+
 void setup(void)
 {
   pinMode(LED_BLUE, OUTPUT);
 
-<<<<<<< HEAD
-  Serial.begin(0);
-=======
-  if (arduino_pro_mini) Serial.begin(9600);
-//  else SerialUSB.begin(0);
->>>>>>> e4a4ad32bdc410d8eed71ae94ec467864f8df904
+  Serial.begin(9600);
 
   radio.begin();
 
@@ -98,7 +89,7 @@ void loop(void)
      else {
         //failed sending
      }
-//     digitalWrite(DEBUG_PIN,LOW);
+     digitalWrite(DEBUG_PIN,LOW);
   } // end while
 }   // end loop
 
@@ -123,11 +114,12 @@ void printReceiveData(byte whichPipe) {
    Serial.print(",");
    Serial.print(whichPipe); 
    Serial.print(",");
-  for (int i=0; i<PACKET_SIZE; i++) {
-         Serial.print(receiveData[i]); 
-         if(i<PACKET_SIZE-1){
-          Serial.print(",");
-         }
+  for (int i=0; i<PACKET_SIZE; i++)
+  {
+     Serial.print(receiveData[i]); 
+     if(i<PACKET_SIZE-1) {
+      Serial.print(",");
+     }
   }
   Serial.println(" ");
 }
@@ -169,12 +161,46 @@ void printReceiveDataFormated(byte whichPipe) {
 }
 
 void getJoyStickData() {
-  sendData[0] = MOTOR_OPCODE;
-  sendData[1] = 120; 
-  sendData[2] = 120;
-  sendData[3] = 0;
-  sendData[4] = 1;
-  state = 1;
+  if (Serial.available() > 0)
+  {
+    command = Serial.read();
+    if (command == ' ') {
+      sendData[0] = MOTOR_OPCODE;
+      sendData[1] = 0; 
+      sendData[2] = 0;
+      sendData[3] = 0;
+      sendData[4] = 1;
+      state = 1;
+    }
+    if (command == 'w') {
+      sendData[0] = MOTOR_OPCODE;
+      sendData[1] = 100; 
+      sendData[2] = 100;
+      sendData[3] = 0;
+      sendData[4] = 1;
+      state = 1;
+    }
+    else if (command == 's') {
+      sendData[0] = MOTOR_OPCODE;
+      sendData[1] = 100; 
+      sendData[2] = 100;
+      sendData[3] = 1;
+      sendData[4] = 0;
+      state = 1;
+    }
+    else if (command == 'a') {
+      sendData[0] = MOTOR_OPCODE;
+      sendData[1] = 100; 
+      sendData[2] = 50;
+      state = 1;
+    }
+    else if (command == 'd') {
+      sendData[0] = MOTOR_OPCODE;
+      sendData[1] = 50; 
+      sendData[2] = 100;
+      state = 1;
+    }
+  }
 
 //  int forward_back = analogRead(BUTTON_X); 
 //  int left_right   = analogRead(BUTTON_Y); 
