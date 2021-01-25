@@ -5,8 +5,8 @@
 // Define pins
 #define  LED_BLUE     0
 #define  LED_RED      1
-#define  CE           10 // 3 Arduino pro mini
-#define  CSN          9  // 8 Arduino pro mini
+#define  CE           3 // 3 Arduino pro mini
+#define  CSN          8  // 8 Arduino pro mini
 #define BUTTON_X      A0
 #define BUTTON_Y      A1
 #define  DEBUG_PIN    0
@@ -42,7 +42,7 @@ void setup(void)
 {
   pinMode(LED_BLUE, OUTPUT);
 
-  SerialUSB.begin(0);
+  Serial.begin(0);
 
   radio.begin();
 
